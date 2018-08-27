@@ -21,7 +21,7 @@ typedef struct input_pin input_pin;
 
 struct input_pin{
 	coordinate pos;
-	value *input_value;
+	value **input_value;
 };
 
 //Output pins point to the output of a circuit.
@@ -63,16 +63,15 @@ struct wire{
 typedef struct component_view component_view;
 
 struct component_view{
-	component *comp;
+	coordinate p0;
 	union {
-		struct box_orientation {
-			coordinate p0;
-			coordinate p1;
-		} box;
-		unsigned char orientation;
+		coordinate p1;
+		unsigned char direction;
 	};
-	coordinate *input_pins;
-	coordinate *output_pins;
+	unsigned int input_pins_id;
+	unsigned int num_input_pins;
+	unsigned int output_pins_id;
+	unsigned int num_output_pins;
 };
 
 //Circuit views contain all of the display information of a circuit simulation.

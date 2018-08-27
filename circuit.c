@@ -14,62 +14,62 @@ primitive *create_primitive(value *input1, value *input2, primitive_type type){
 
 void tick_primitive(primitive *p){
 	if(p->type == AND){
-		if(*(p->input1) == TRUE && *(p->input2) == TRUE){
-			p->next_output = TRUE;
-		} else if(*(p->input1) == UNDEFINED || *(p->input2) == UNDEFINED){
-			p->next_output = UNDEFINED;
+		if(*(p->input1) == TRUE_VALUE && *(p->input2) == TRUE_VALUE){
+			p->next_output = TRUE_VALUE;
+		} else if(*(p->input1) == UNDEFINED_VALUE || *(p->input2) == UNDEFINED_VALUE){
+			p->next_output = UNDEFINED_VALUE;
 		} else {
-			p->next_output = FALSE;
+			p->next_output = FALSE_VALUE;
 		}
 	} else if(p->type == OR){
-		if(*(p->input1) == UNDEFINED || *(p->input2) == UNDEFINED){
-			p->next_output = UNDEFINED;
-		} else if(*(p->input1) == TRUE || *(p->input2) == TRUE){
-			p->next_output = TRUE;
+		if(*(p->input1) == UNDEFINED_VALUE || *(p->input2) == UNDEFINED_VALUE){
+			p->next_output = UNDEFINED_VALUE;
+		} else if(*(p->input1) == TRUE_VALUE || *(p->input2) == TRUE_VALUE){
+			p->next_output = TRUE_VALUE;
 		} else {
-			p->next_output = FALSE;
+			p->next_output = FALSE_VALUE;
 		}
 	} else if(p->type == NOT){
-		if(*(p->input1) == UNDEFINED){
-			p->next_output = UNDEFINED;
-		} else if(*(p->input1) == TRUE){
-			p->next_output = FALSE;
+		if(*(p->input1) == UNDEFINED_VALUE){
+			p->next_output = UNDEFINED_VALUE;
+		} else if(*(p->input1) == TRUE_VALUE){
+			p->next_output = FALSE_VALUE;
 		} else {
-			p->next_output = TRUE;
+			p->next_output = TRUE_VALUE;
 		}
 	} else if(p->type == XOR){
-		if(*(p->input1) == UNDEFINED || *(p->input2) == UNDEFINED){
-			p->next_output = UNDEFINED;
+		if(*(p->input1) == UNDEFINED_VALUE || *(p->input2) == UNDEFINED_VALUE){
+			p->next_output = UNDEFINED_VALUE;
 		} else if(*(p->input1) != *(p->input2)){
-			p->next_output = TRUE;
+			p->next_output = TRUE_VALUE;
 		} else {
-			p->next_output = FALSE;
+			p->next_output = FALSE_VALUE;
 		}
 	} else if(p->type == NAND){
-		if(*(p->input1) == TRUE && *(p->input2) == TRUE){
-			p->next_output = FALSE;
-		} else if(*(p->input1) == UNDEFINED || *(p->input2) == UNDEFINED){
-			p->next_output = UNDEFINED;
+		if(*(p->input1) == TRUE_VALUE && *(p->input2) == TRUE_VALUE){
+			p->next_output = FALSE_VALUE;
+		} else if(*(p->input1) == UNDEFINED_VALUE || *(p->input2) == UNDEFINED_VALUE){
+			p->next_output = UNDEFINED_VALUE;
 		} else {
-			p->next_output = TRUE;
+			p->next_output = TRUE_VALUE;
 		}
 	} else if(p->type == NOR){
-		if(*(p->input1) == UNDEFINED || *(p->input2) == UNDEFINED){
-			p->next_output = UNDEFINED;
-		} else if(*(p->input1) == TRUE || *(p->input2) == TRUE){
-			p->next_output = FALSE;
+		if(*(p->input1) == UNDEFINED_VALUE || *(p->input2) == UNDEFINED_VALUE){
+			p->next_output = UNDEFINED_VALUE;
+		} else if(*(p->input1) == TRUE_VALUE || *(p->input2) == TRUE_VALUE){
+			p->next_output = FALSE_VALUE;
 		} else {
-			p->next_output = TRUE;
+			p->next_output = TRUE_VALUE;
 		}
 	} else if(p->type == BUFF){
 		p->next_output = *(p->input1);
 	} else if(p->type == XNOR){
-		if(*(p->input1) == UNDEFINED || *(p->input2) == UNDEFINED){
-			p->next_output = UNDEFINED;
+		if(*(p->input1) == UNDEFINED_VALUE || *(p->input2) == UNDEFINED_VALUE){
+			p->next_output = UNDEFINED_VALUE;
 		} else if(*(p->input1) != *(p->input2)){
-			p->next_output = FALSE;
+			p->next_output = FALSE_VALUE;
 		} else {
-			p->next_output = TRUE;
+			p->next_output = TRUE_VALUE;
 		}
 	}
 }
@@ -91,14 +91,14 @@ table *create_table(unsigned int num_inputs, unsigned int num_outputs){
 	for(i = 0; i < (1<<num_inputs); i++){
 		output->table_outputs[i] = malloc(sizeof(value)*num_outputs);
 		for(j = 0; j < num_outputs; j++){
-			output->table_outputs[i][j] = UNDEFINED;
+			output->table_outputs[i][j] = UNDEFINED_VALUE;
 		}
 	}
 	output->next_outputs = malloc(sizeof(value)*num_outputs);
 	output->outputs = malloc(sizeof(value)*num_outputs);
 	for(i = 0; i < num_outputs; i++){
-		output->next_outputs[i] = UNDEFINED;
-		output->outputs[i] = UNDEFINED;
+		output->next_outputs[i] = UNDEFINED_VALUE;
+		output->outputs[i] = UNDEFINED_VALUE;
 	}
 }
 
@@ -112,10 +112,10 @@ void tick_table(table *t){
 
 	for(i = 0; i < t->num_inputs; i++){
 		table_index <<= 1;
-		if(*(t->inputs[i]) == UNDEFINED){
+		if(*(t->inputs[i]) == UNDEFINED_VALUE){
 			inputs_undefined = true;
 			break;
-		} else if(*(t->inputs[i]) == TRUE){
+		} else if(*(t->inputs[i]) == TRUE_VALUE){
 			table_index |= 1;
 		}
 	}
@@ -124,7 +124,7 @@ void tick_table(table *t){
 		memcpy(t->next_outputs, t->table_outputs[table_index], sizeof(value)*t->num_outputs);
 	} else {
 		for(i = 0; i < t->num_outputs; i++){
-			t->next_outputs[i] = UNDEFINED;
+			t->next_outputs[i] = UNDEFINED_VALUE;
 		}
 	}
 }
@@ -183,23 +183,3 @@ void update_circuit(circuit *c){
 	}
 }
 
-int main(){
-	value in1 = TRUE;
-	value in2 = FALSE;
-	circuit *c;
-	component comp;
-	primitive *p;
-
-	c = create_circuit(1);
-	p = create_primitive(&in1, &in2, OR);
-	comp = create_component(PRIMITIVE);
-	comp.prim = p;
-	c->components[0] = comp;
-	tick_circuit(c);
-	update_circuit(c);
-	if(c->components[0].prim->output == TRUE){
-		printf("hi!");
-	}
-
-	return 0;
-}

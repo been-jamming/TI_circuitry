@@ -4,6 +4,7 @@
 
 #include <tigcclib.h>
 #include "display.h"
+#include "extgraph.h"
 
 #define ON_VIEW(x, y) (((x) <= 159) && ((x) >= 0) && ((y) >= 16) && ((y) <= 99))
 
@@ -72,7 +73,7 @@ unsigned char output_pin_sprite[8] = {
 	0b00000000
 };
 
-unsigned long int and_sprite_north[20] = {
+unsigned long int and_sprites[4][20] = {{
 	0b00000000000000000000000000000000,
 	0b00000000000000000000000000000000,
 	0b11111111111111100000000000000000,
@@ -93,9 +94,70 @@ unsigned long int and_sprite_north[20] = {
 	0b11111111111111100000000000000000,
 	0b00000000000000000000000000000000,
 	0b00000000000000000000000000000000
-};
-
-
+}, {
+	0b00000000000000000000000000000000,
+	0b00000000000000000000000000000000,
+	0b11111111111111100000000000000000,
+	0b10000000000000010000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000010000000000000,
+	0b10000000000000000010000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000010000000000000000,
+	0b11111111111111100000000000000000,
+	0b00000000000000000000000000000000,
+	0b00000000000000000000000000000000
+}, {
+	0b00000000000000000000000000000000,
+	0b00000000000000000000000000000000,
+	0b11111111111111100000000000000000,
+	0b10000000000000010000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000010000000000000,
+	0b10000000000000000010000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000010000000000000000,
+	0b11111111111111100000000000000000,
+	0b00000000000000000000000000000000,
+	0b00000000000000000000000000000000
+}, {
+	0b00000000000000000000000000000000,
+	0b00000000000000000000000000000000,
+	0b11111111111111100000000000000000,
+	0b10000000000000010000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000010000000000000,
+	0b10000000000000000010000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000000100000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000001000000000000000,
+	0b10000000000000010000000000000000,
+	0b11111111111111100000000000000000,
+	0b00000000000000000000000000000000,
+	0b00000000000000000000000000000000
+}};
 
 void *kbq;
 INT_HANDLER old_int_5 = NULL;
@@ -148,8 +210,40 @@ circuit_view *create_circuit_view(unsigned int num_wires, unsigned int num_input
 	output->view_right = view_right;
 	output->view_up = view_up;
 	output->view_down = view_down;
-	output->circ = create_circuit(0);
-	output->components_buff_length = 0;	
+	output->circ = create_circuit(1);
+	output->components_buff_length = 1;
+
+	output->component_views = malloc(sizeof(component_view *));
+	return output;
+}
+
+input_pin create_input_pin(component c, int x, int y, unsigned char input_id){
+	input_pin output;
+
+	output.pos.x = x;
+	output.pos.y = y;
+	
+	if(c.type == PRIMITIVE){
+		if(input_id == 1){
+			output.input_value = &(c.prim->input1);
+		} else if(input_id == 2){
+			output.input_value = &(c.prim->input2);
+		}
+	}
+	
+	return output;
+}
+
+output_pin create_output_pin(component c, int x, int y, unsigned char output_id){
+	output_pin output;
+
+	output.pos.x = x;
+	output.pos.y = y;
+	
+	if(c.type == PRIMITIVE){
+		output.output_value = &(c.prim->output);
+	}
+
 	return output;
 }
 
@@ -168,8 +262,9 @@ void add_wire(circuit_view *c, wire w){
 	c->num_wires++;
 }
 
-void add_component(circuit_view *c, component comp){
+void add_component(circuit_view *c, component comp, component_view comp_view){
 	component *new_components;
+	component_view *new_component_views;
 
 	if(c->circ.num_components == c->components_buff_length){
 		c->components_buff_length <<= 1;
@@ -177,10 +272,46 @@ void add_component(circuit_view *c, component comp){
 		memcpy(new_components, c->circ.components, sizeof(component)*c->circ.num_components);
 		free(c->circ.components);
 		c->circ.components = new_components;
+		
+		new_component_views = malloc(sizeof(component_view)*c->components_buff_length);
+		memcpy(new_component_views, c->component_views, sizeof(component_view)*c->circ.num_components);
+		free(c->component_views);
+		c->component_views = new_component_views;
 	}
 
 	c->circ.components[c->circ.num_components] = comp;
+	c->component_views[c->circ.num_components] = comp_view;
 	c->circ.num_components += 1;
+}
+
+void add_input_pin(circuit_view *c, input_pin pin){
+	input_pin *new_input_pins;
+	
+	if(c->num_input_pins == c->input_pin_buff_length){
+		c->input_pin_buff_length <<= 1;
+		new_input_pins = malloc(sizeof(input_pin)*c->input_pin_buff_length);
+		memcpy(new_input_pins, c->input_pins, sizeof(input_pin)*c->num_input_pins);
+		free(c->input_pins);
+		c->input_pins = new_input_pins;
+	}
+
+	c->input_pins[c->num_input_pins] = pin;
+	c->num_input_pins += 1;
+}
+
+void add_output_pin(circuit_view *c, output_pin pin){
+	output_pin *new_output_pins;
+
+	if(c->num_output_pins == c->output_pin_buff_length){
+		c->output_pin_buff_length <<= 1;
+		new_output_pins = malloc(sizeof(output_pin)*c->output_pin_buff_length);
+		memcpy(new_output_pins, c->output_pins, sizeof(output_pin)*c->num_output_pins);
+		free(c->output_pins);
+		c->output_pins = new_output_pins;
+	}
+
+	c->output_pins[c->num_output_pins] = pin;
+	c->num_output_pins += 1;
 }
 
 void draw_wire(wire w, int offset_x, int offset_y){
@@ -243,8 +374,43 @@ void draw_wires(circuit_view *c){
 	}
 }
 
-void draw_component(component c, int x_offset, int y_offset, unsigned char direction){
+void draw_component(component c, int x, int y, unsigned char direction){
+	if(c.type == PRIMITIVE){
+		if(c.prim->type == AND){
+			ClipSprite32_OR_R(x, y, 20, and_sprites[direction], LCD_MEM);
+		}
+	}
+}
 
+void draw_components(circuit_view *c){
+	unsigned int i;
+	for(i = 0; i < c->circ.num_components; i++){
+		draw_component(c->circ.components[i], c->component_views[i].p0.x + global_view->view_left, c->component_views[i].p0.y + global_view->view_up, c->component_views[i].direction);
+	}
+}
+
+void draw_input_pin(input_pin pin, int x_offset, int y_offset){
+	ClipSprite8_OR_R(pin.pos.x - x_offset, pin.pos.y - y_offset, 8, input_pin_sprite, LCD_MEM);
+}
+
+void draw_input_pins(circuit_view *c){
+	unsigned int i;
+	
+	for(i = 0; i < c->num_input_pins; i++){
+		draw_input_pin(c->input_pins[i], c->view_left, c->view_up);
+	}
+}
+
+void draw_output_pin(output_pin pin, int x_offset, int y_offset){
+	ClipSprite8_OR_R(pin.pos.x - x_offset, pin.pos.y - y_offset, 8, output_pin_sprite, LCD_MEM);
+}
+
+void draw_output_pins(circuit_view *c){
+	unsigned int i;
+
+	for(i = 0; i < c->num_output_pins; i++){
+		draw_output_pin(c->output_pins[i], c->view_left, c->view_up);
+	}
 }
 
 void shift_view_y(int offset){
@@ -265,10 +431,10 @@ void set_cursor(){
 void redraw_all(){
 	clrscr();
 
-	Sprite32(50, 50, 20, and_sprite_north, LCD_MEM, SPRT_OR);
-
 	MenuOn(menu_run);
 	draw_wires(global_view);
+	draw_input_pins(global_view);
+	draw_output_pins(global_view);
 	redraw_cursor();
 }
 
@@ -358,7 +524,7 @@ void _main(){
 	DynMenuAdd(menu, 0, "Quit", MENU_QUIT, DMF_TEXT);
 	DynMenuAdd(menu, MENU_QUIT, "Quit", MENU_QUIT_QUIT, DMF_TEXT);
 	
-	global_view = create_circuit_view(1, 0, 0, 0, 159, 0, 99);
+	global_view = create_circuit_view(1, 1, 1, 0, 159, 0, 99);
 	add_wire(global_view, (wire) {.pos = (coordinate) {.x = 50, .y = 50}, .direction = HORIZONTAL, .length = 5});
 	add_wire(global_view, (wire) {.pos = (coordinate) {.x = 50, .y = 50}, .direction = VERTICAL, .length = 15});
 
@@ -386,8 +552,37 @@ void _main(){
 			new_wire.length = 0;
 			add_wire(global_view, new_wire);
 			menu_command = NONE;
+		} else if(state == NONE && menu_command == MENU_ADD_AND){ 
+			input_pin new_in1;
+			input_pin new_in2;
+			output_pin new_out1;
+			component new_component;
+			component_view new_component_view;
+			
+			new_component.type = PRIMITIVE;
+			
+			new_component.prim = (primitive *) malloc(sizeof(primitive));
+			new_component.prim->type = AND;
+			new_component.prim->input1 = (value *) 0;
+			new_component.prim->input2 = (value *) 0;
+			new_component.prim->output = UNDEFINED_VALUE;
+			
+			//new_component.prim = create_primitive((value *) 0, (value *) 0, AND);
+			new_in1 = create_input_pin(new_component, cursor_pos.x + global_view->view_left + 16, cursor_pos.y + global_view->view_up + 16, 1);
+			new_in2 = create_input_pin(new_component, cursor_pos.x + global_view->view_left + 20, cursor_pos.y + global_view->view_up + 16, 1);
+			new_out1 = create_output_pin(new_component, cursor_pos.x + global_view->view_left - 20, cursor_pos.y + global_view->view_up + 16, 0);
+			new_component_view.p0 = cursor_pos;
+			new_component_view.input_pins_id = global_view->num_input_pins;
+			new_component_view.num_input_pins = 2;
+			new_component_view.output_pins_id = global_view->num_output_pins;
+			new_component_view.num_output_pins = 1;
+			add_component(global_view, new_component, new_component_view);
+			add_input_pin(global_view, new_in1);
+			add_input_pin(global_view, new_in2);
+			add_output_pin(global_view, new_out1);
+			menu_command = NONE;
 		}
-
+			
 		if(state == ADDING_WIRE){
 			if(!disable_horizontal && !disable_vertical){
 				if(command == KEY_LEFT || command == KEY_RIGHT){
